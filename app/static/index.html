@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Writing Assistant</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px;
+        font-family: Inter, Arial, sans-serif;
+      }
+      textarea,
+      input,
+      button {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 8px;
+        margin-bottom: 12px;
+        padding: 10px;
+        border-radius: 8px;
+      }
+      button {
+        cursor: pointer;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .panel {
+        border: 1px solid #6665;
+        border-radius: 12px;
+        padding: 16px;
+      }
+      pre {
+        white-space: pre-wrap;
+        border: 1px solid #6665;
+        border-radius: 8px;
+        padding: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AI Writing Assistant</h1>
+    <p>Create a session, then generate/edit/refine writing in real time.</p>
+
+    <div class="panel">
+      <button id="createSession">Create Session</button>
+      <label>Session ID</label>
+      <input id="sessionId" readonly />
+    </div>
+
+    <div class="row">
+      <section class="panel">
+        <h3>Generate</h3>
+        <label>Prompt</label>
+        <textarea id="prompt" rows="5" placeholder="Write a product launch email..."></textarea>
+        <label>Tone</label>
+        <input id="tone" value="professional" />
+        <button id="generateBtn">Generate Draft</button>
+      </section>
+
+      <section class="panel">
+        <h3>Edit</h3>
+        <label>Text</label>
+        <textarea id="editText" rows="5" placeholder="Paste text to edit..."></textarea>
+        <label>Instruction</label>
+        <input id="instruction" value="Make it concise and friendly" />
+        <button id="editBtn">Edit Text</button>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h3>Refine</h3>
+      <label>Text</label>
+      <textarea id="refineText" rows="5" placeholder="Paste text to refine..."></textarea>
+      <button id="refineBtn">Refine Text</button>
+    </section>
+
+    <section class="panel">
+      <h3>Output</h3>
+      <pre id="output">No output yet.</pre>
+    </section>
+
+    <script>
+      const sessionIdInput = document.getElementById("sessionId");
+      const output = document.getElementById("output");
+
+      async function request(url, payload) {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const body = await res.json();
+          throw new Error(body.detail || "Request failed");
+        }
+        return await res.json();
+      }
+
+      document.getElementById("createSession").addEventListener("click", async () => {
+        try {
+          const data = await request("/api/sessions", {});
+          sessionIdInput.value = data.session_id;
+          output.textContent = `Session created: ${data.session_id}`;
+        } catch (e) {
+          output.textContent = e.message;
+        }
+      });
+
+      document.getElementById("generateBtn").addEventListener("click", async () => {
+        try {
+          const data = await request("/api/write/generate", {
+            session_id: sessionIdInput.value,
+            prompt: document.getElementById("prompt").value,
+            tone: document.getElementById("tone").value,
+          });
+          output.textContent = data.output_text;
+          document.getElementById("editText").value = data.output_text;
+          document.getElementById("refineText").value = data.output_text;
+        } catch (e) {
+          output.textContent = e.message;
+        }
+      });
+
+      document.getElementById("editBtn").addEventListener("click", async () => {
+        try {
+          const data = await request("/api/write/edit", {
+            session_id: sessionIdInput.value,
+            text: document.getElementById("editText").value,
+            instruction: document.getElementById("instruction").value,
+          });
+          output.textContent = data.output_text;
+        } catch (e) {
+          output.textContent = e.message;
+        }
+      });
+
+      document.getElementById("refineBtn").addEventListener("click", async () => {
+        try {
+          const data = await request("/api/write/refine", {
+            session_id: sessionIdInput.value,
+            text: document.getElementById("refineText").value,
+          });
+          output.textContent = data.output_text;
+        } catch (e) {
+          output.textContent = e.message;
+        }
+      });
+    </script>
+  </body>
+</html>
